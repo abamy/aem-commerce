@@ -6,8 +6,8 @@ https://experienceleague.adobe.com/developer/commerce/storefront/
 
 ## Environments
 
-- Preview: https://main--{repo}--{owner}.hlx.page/
-- Live: https://main--{repo}--{owner}.hlx.live/
+- Preview: [https://main--aem-commerce--abamy.hlx.page/](https://main--aem-commerce--abamy.hlx.page/)
+- Live: [https://main--aem-commerce--abamy.hlx.live/](https://main--aem-commerce--abamy.hlx.live/)
 
 ## Pre-requisites
 
