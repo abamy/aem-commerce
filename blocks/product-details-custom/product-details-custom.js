@@ -13,31 +13,17 @@ import {
   performCatalogServiceQuery,
   refineProductQuery,
   setJsonLd,
+  loadErrorPage, variantsQuery,
 } from '../../scripts/commerce.js';
 import { readBlockConfig } from '../../scripts/aem.js';
 
 const html = htm.bind(h);
 
-export function errorGettingProduct(code = 404) {
-  fetch(`/${code}.html`).then((response) => {
-    if (response.ok) {
-      return response.text();
-    }
-    throw new Error(`Error getting ${code} page`);
-  }).then((htmlText) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlText, 'text/html');
-    document.body.innerHTML = doc.body.innerHTML;
-    document.head.innerHTML = doc.head.innerHTML;
-  });
-  document.body.innerHTML = '';
-}
-
 async function getVariantDetails(variantIds, sku) {
   const result = await performCatalogServiceQuery(
     refineProductQuery,
     {
-      sku: sku.toUpperCase(),
+      sku,
       variantIds,
     },
   );
@@ -54,27 +40,47 @@ async function setJsonLdProduct(product) {
   const amount = priceRange?.minimum?.final?.amount || price?.final?.amount;
   const brand = attributes.find((attr) => attr.name === 'brand');
 
-  setJsonLd({
+  // get variants
+  const { variants } = (await performCatalogServiceQuery(variantsQuery, { sku }))?.variants
+  || { variants: [] };
+
+  const ldJson = {
     '@context': 'http://schema.org',
     '@type': 'Product',
     name,
     description,
     image: images[0]?.url,
-    offers: [{
-      '@type': 'http://schema.org/Offer',
-      price: amount?.value,
-      priceCurrency: amount?.currency,
-      availability: inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
-    }],
+    offers: [],
     productID: sku,
     brand: {
       '@type': 'Brand',
       name: brand?.value,
     },
-    url: new URL(`/products/${urlKey}/${sku.toLowerCase()}`, window.location),
+    url: new URL(`/products/${urlKey}/${sku}`, window.location),
     sku,
-    '@id': new URL(`/products/${urlKey}/${sku.toLowerCase()}`, window.location),
-  }, 'product');
+    '@id': new URL(`/products/${urlKey}/${sku}`, window.location),
+  };
+
+  if (variants.length > 1) {
+    ldJson.offers.push(...variants.map((variant) => ({
+      '@type': 'Offer',
+      name: variant.product.name,
+      image: variant.product.images[0]?.url,
+      price: variant.product.price.final.amount.value,
+      priceCurrency: variant.product.price.final.amount.currency,
+      availability: variant.product.inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
+      sku: variant.product.sku,
+    })));
+  } else {
+    ldJson.offers.push({
+      '@type': 'Offer',
+      price: amount?.value,
+      priceCurrency: amount?.currency,
+      availability: inStock ? 'http://schema.org/InStock' : 'http://schema.org/OutOfStock',
+    });
+  }
+
+  setJsonLd(ldJson, 'product');
 }
 
 class ProductDetailPage extends Component {
@@ -101,28 +107,24 @@ class ProductDetailPage extends Component {
       if (!product) {
         throw new Error("Couldn't get product");
       }
-    } catch (e) {
-      errorGettingProduct();
-    }
 
-    this.setState({
-      product,
-      loading: false,
-      selection: {},
-    });
+      this.setState({
+        product,
+        loading: false,
+        selection: {},
+      });
+    } catch (e) {
+      await loadErrorPage();
+    } finally {
+      this.props.resolve();
+    }
   }
 
   onAddToCart = async () => {
     if (Object.keys(this.state.selection).length === (this.state.product.options?.length || 0)) {
       const optionsUIDs = Object.values(this.state.selection).map((option) => option.id);
-      const values = [{
-        optionsUIDs,
-        quantity: this.state.selectedQuantity ?? 1,
-        sku: this.state.product.sku,
-      }];
-      const { addProductsToCart } = await import('@dropins/storefront-cart/api.js');
-      console.debug('onAddToCart', values, addProductsToCart);
-      addProductsToCart(values);
+      const { cartApi } = await import('../../scripts/minicart/api.js');
+      cartApi.addToCart(this.state.product.sku, optionsUIDs, this.state.selectedQuantity ?? 1, 'product-detail');
     }
   };
 
@@ -206,10 +208,12 @@ export default async function decorate($block) {
 
   const skuFromUrl = getSkuFromUrl() || blockConfig.sku;
   if (!skuFromUrl) {
-    errorGettingProduct();
+    await loadErrorPage();
+    return Promise.reject();
   }
 
-  const app = html`<${ProductDetailPage} sku=${skuFromUrl} />`;
-
-  render(app, $block);
+  return new Promise((resolve) => {
+    const app = html`<${ProductDetailPage} sku=${skuFromUrl} resolve=${resolve} />`;
+    render(app, $block);
+  });
 }

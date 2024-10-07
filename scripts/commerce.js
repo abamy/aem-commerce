@@ -100,6 +100,28 @@ export const productDetailQuery = `query ProductQuery($sku: String!) {
 }
 ${priceFieldsFragment}`;
 
+export const variantsQuery = `
+query($sku: String!) {
+  variants(sku: $sku) {
+    variants {
+      product {
+        sku
+        name
+        inStock
+        images(roles: ["image"]) {
+          url
+        }
+        ...on SimpleProductView {
+          price {
+            final { amount { currency value } }
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
 /* Common functionality */
 
 export async function performCatalogServiceQuery(query, variables) {
@@ -210,7 +232,7 @@ export function renderPrice(product, format, html = (strings, ...values) => stri
 
     if (finalMin.amount.value !== regularMin.amount.value) {
       return html`<${Fragment}>
-      <span class="price-final">${format(finalMin.amount.value)} - ${format(regularMin.amount.value)}</span>
+      <span class="price-final">${format(finalMin.amount.value)} - ${format(regularMin.amount.value)}</span> 
     </${Fragment}>`;
     }
 
@@ -230,8 +252,6 @@ export function getSkuFromUrl() {
 
 const productsCache = {};
 export async function getProduct(sku) {
-  // eslint-disable-next-line no-param-reassign
-  sku = sku.toUpperCase();
   if (productsCache[sku]) {
     return productsCache[sku];
   }
@@ -292,4 +312,43 @@ export function setJsonLd(data, name) {
   script.innerHTML = JSON.stringify(data);
   script.dataset.name = name;
   document.head.appendChild(script);
+}
+
+export async function loadErrorPage(code = 404) {
+  const htmlText = await fetch(`/${code}.html`).then((response) => {
+    if (response.ok) {
+      return response.text();
+    }
+    throw new Error(`Error getting ${code} page`);
+  });
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlText, 'text/html');
+  document.body.innerHTML = doc.body.innerHTML;
+  document.head.innerHTML = doc.head.innerHTML;
+
+  // https://developers.google.com/search/docs/crawling-indexing/javascript/fix-search-javascript
+  // Point 2. prevent soft 404 errors
+  if (code === 404) {
+    const metaRobots = document.createElement('meta');
+    metaRobots.name = 'robots';
+    metaRobots.content = 'noindex';
+    document.head.appendChild(metaRobots);
+  }
+
+  // When moving script tags via innerHTML, they are not executed. They need to be re-created.
+  const notImportMap = (c) => c.textContent && c.type !== 'importmap';
+  Array.from(document.head.querySelectorAll('script'))
+    .filter(notImportMap)
+    .forEach((c) => c.remove());
+  Array.from(doc.head.querySelectorAll('script'))
+    .filter(notImportMap)
+    .forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach(({ name, value }) => {
+        newScript.setAttribute(name, value);
+      });
+      const scriptText = document.createTextNode(oldScript.innerHTML);
+      newScript.appendChild(scriptText);
+      document.head.appendChild(newScript);
+    });
 }

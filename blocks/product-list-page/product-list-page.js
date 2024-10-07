@@ -12,6 +12,7 @@ export default async function decorate(block) {
     environmentId: await getConfigValue('commerce-environment-id'),
     environmentType: (await getConfigValue('commerce-endpoint')).includes('sandbox') ? 'testing' : '',
     apiKey: await getConfigValue('commerce-x-api-key'),
+    apiUrl: await getConfigValue('commerce-endpoint'),
     websiteCode: await getConfigValue('commerce-website-code'),
     storeCode: await getConfigValue('commerce-store-code'),
     storeViewCode: await getConfigValue('commerce-store-view-code'),
@@ -32,18 +33,18 @@ export default async function decorate(block) {
       listview: true,
       displayMode: '', // "" for plp || "PAGE" for category/catalog
       addToCart: async (...args) => {
-        const { addProductsToCart } = await import('../../scripts/__dropins__/storefront-cart/api.js');
-        await addProductsToCart([{
-          sku: args[0],
-          options: args[1],
-          quantity: args[2],
-        }]);
+        const { cartApi } = await import('../../scripts/minicart/api.js');
+        return cartApi.addToCart(...args);
       },
     },
     context: {
       customerGroup: await getConfigValue('commerce-customer-group'),
     },
-    route: ({ sku, urlKey }) => `/products/${urlKey}/${sku}`,
+    route: ({ sku, urlKey }) => {
+      const a = new URL(window.location.origin);
+      a.pathname = `/products/${urlKey}/${sku}`;
+      return a.toString();
+    },
   };
 
   if (type !== 'search') {

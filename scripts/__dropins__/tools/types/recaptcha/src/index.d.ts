@@ -19,24 +19,21 @@ export declare class RecaptchaModule {
     _recaptchaBackendEndpoint: string;
     _recaptchaScriptUrl: string;
     _configStorageKey: string;
-    _logger: boolean;
-    _updateBadgePosition(badgeId: string, config: ReCaptchaV3ModifyProps): Promise<void | null>;
+    _updateBadgePosition(currentForm: PropsFormTypes, config: ReCaptchaV3ModifyProps): Promise<void | null>;
     _addRecaptchaScript(): Promise<void>;
     _fetchStoreConfig(): Promise<ReCaptchaV3Response | undefined>;
     _loadConfig(): Promise<ReCaptchaV3ModifyProps | null>;
     setEndpoint(url: string): void;
     setConfig(configList: PropsFormTypes[]): Promise<void>;
-    initReCaptcha(lazyLoadTimeout?: number): Promise<void>;
+    initReCaptcha(): Promise<void>;
     verifyReCaptcha(): Promise<string | undefined>;
-    enableLogger(logger: boolean): void;
     getMethods(): {
-        enableLogger: (logger: boolean) => void;
         setEndpoint: (url: string) => void;
         setConfig: (configList: PropsFormTypes[]) => Promise<void>;
-        initReCaptcha: (lazyLoadTimeout?: number) => Promise<void>;
+        initReCaptcha: () => Promise<void>;
         verifyReCaptcha: () => Promise<string | undefined>;
     };
 }
-declare const initReCaptcha: (lazyLoadTimeout?: number) => Promise<void>, verifyReCaptcha: () => Promise<string | undefined>, setEndpoint: (url: string) => void, setConfig: (configList: PropsFormTypes[]) => Promise<void>, enableLogger: (logger: boolean) => void;
-export { setEndpoint, setConfig, initReCaptcha, verifyReCaptcha, enableLogger };
+declare const initReCaptcha: () => Promise<void>, verifyReCaptcha: () => Promise<string | undefined>, setEndpoint: (url: string) => void, setConfig: (configList: PropsFormTypes[]) => Promise<void>;
+export { setEndpoint, setConfig, initReCaptcha, verifyReCaptcha };
 //# sourceMappingURL=index.d.ts.map
