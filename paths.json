@@ -1,0 +1,19 @@
+{
+    "mappings": [
+      "/content/aem-commerce/:/",
+      "/content/aem-commerce/configuration:/.helix/config.json",
+      "/content/aem-commerce/metadata:/metadata.json",
+      "/content/aem-commerce/configs:/configs.json",
+      "/content/aem-commerce/configs-stage:/configs-stage.json",
+      "/content/aem-commerce/configs-dev:/configs-dev.json",
+      "/content/aem-commerce/redirects:/redirects.json",
+      "/content/aem-commerce/placeholders:/placeholders.json",
+      "/content/aem-commerce/products/recommended-products:/products/recommended-products.json",
+      "/content/aem-commerce/enrichment/enrichment:/enrichment/enrichment.json",
+      "/content/dam/aem-commerce/images/products/:/images/products/"
+    ],
+    "includes": [
+      "/content/aem-commerce",
+      "/content/dam/aem-commerce/images/products/"
+    ]
+}
